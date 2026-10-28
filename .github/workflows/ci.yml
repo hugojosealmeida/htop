@@ -269,6 +269,22 @@ jobs:
         TERM: xterm-color
         HTOPRC: .github/workflows/htoprc-darwin
       run: ./htop -n 5 -t
+    - name: Check data collection for invisible FOOTPRINT sort key
+      env:
+        TERM: xterm-color
+        COLUMNS: 200
+        LINES: 60
+      run: |
+        # "htop -s M_FOOTPRINT" sorts by a column that is not visible; the scan
+        # must still collect its data. Without collection every footprint stays
+        # 0 and the PID tie-breaker puts the small process (spawned first, so
+        # with the smaller PID) on top instead of the 400 MB one.
+        sleep 60 & small=$!
+        bash -c 'x=$(head -c 400000000 /dev/zero); sleep 60' & big=$!
+        trap 'kill $small $big 2>/dev/null || true' EXIT
+        sed 's/ M_FOOTPRINT//' .github/workflows/htoprc-darwin > "$RUNNER_TEMP/htoprc-sortonly"
+        HTOPRC="$RUNNER_TEMP/htoprc-sortonly" ./htop -n 5 -s M_FOOTPRINT -p "$small,$big" \
+          | python3 .github/workflows/check-htop-first-row.py "$big"
     - name: Distcheck
       run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--enable-werror"
 

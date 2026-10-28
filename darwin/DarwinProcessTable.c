@@ -143,6 +143,13 @@ void ProcessTable_goThroughEntries(ProcessTable* super) {
 
    const double time_interval_ns = Platform_schedulerTicksToNanoseconds(dpt->global_diff) / (double) host->activeCPUs;
 
+   /* Flags of the visible columns plus the active sort key: sorting by a column
+    * that is not displayed (e.g. "htop -s M_FOOTPRINT") still requires the data
+    * backing that column to be collected. */
+   const RowField activeSortKey = ScreenSettings_getActiveSortKey(host->settings->ss);
+   const uint32_t rusageFlags = host->settings->ss->flags |
+      (activeSortKey > 0 && activeSortKey < LAST_PROCESSFIELD ? Process_fields[activeSortKey].flags : 0);
+
    /* We use kinfo_procs for initial data since :
     *
     * 1) They always succeed.
@@ -158,7 +165,7 @@ void ProcessTable_goThroughEntries(ProcessTable* super) {
       DarwinProcess_setFromKInfoProc(&proc->super, &ps[i], preExisting);
       DarwinProcess_setFromLibprocPidinfo(proc, dpt, time_interval_ns);
 
-      if (host->settings->ss->flags & (PROCESS_FLAG_IO | PROCESS_FLAG_FOOTPRINT)) {
+      if (rusageFlags & (PROCESS_FLAG_IO | PROCESS_FLAG_FOOTPRINT)) {
          DarwinProcessTable_readProcRusage(proc);
       }
 
