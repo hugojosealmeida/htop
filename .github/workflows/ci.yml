@@ -257,6 +257,18 @@ jobs:
       run: ./configure --enable-werror || ( cat config.log; exit 1; )
     - name: Build
       run: make -k
+    - name: Check process columns
+      run: ./htop --sort-key=help | grep -q "M_FOOTPRINT"
+    - name: Run htop with FOOTPRINT column (1)
+      env:
+        TERM: xterm-color
+        HTOPRC: .github/workflows/htoprc-darwin
+      run: ./htop -n 5
+    - name: Run htop with FOOTPRINT column (2)
+      env:
+        TERM: xterm-color
+        HTOPRC: .github/workflows/htoprc-darwin
+      run: ./htop -n 5 -t
     - name: Distcheck
       run: make distcheck DISTCHECK_CONFIGURE_FLAGS="--enable-werror"
 

@@ -46,6 +46,7 @@ const ProcessFieldData Process_fields[LAST_PROCESSFIELD] = {
    [PROCESSOR] = { .name = "PROCESSOR", .title = "CPU ", .description = "Id of the CPU the process last executed on", .flags = 0, },
    [M_VIRT] = { .name = "M_VIRT", .title = " VIRT ", .description = "Total program size in virtual memory", .flags = 0, .defaultSortDesc = true, },
    [M_RESIDENT] = { .name = "M_RESIDENT", .title = "  RES ", .description = "Resident set size, size of the text and data sections, plus stack usage", .flags = 0, .defaultSortDesc = true, },
+   [M_FOOTPRINT] = { .name = "M_FOOTPRINT", .title = " FOOTPRINT ", .description = "Physical memory footprint of the process (phys_footprint), matching the \"Memory\" column of Activity Monitor; unlike RES it accounts for compressed and swapped-out memory", .flags = PROCESS_FLAG_FOOTPRINT, .defaultSortDesc = true, },
    [ST_UID] = { .name = "ST_UID", .title = "UID", .description = "User ID of the process owner", .flags = 0, },
    [PERCENT_CPU] = { .name = "PERCENT_CPU", .title = " CPU%", .description = "Percentage of the CPU time the process used in the last sampling", .flags = 0, .defaultSortDesc = true, .autoWidth = true, .autoTitleRightAlign = true, },
    [PERCENT_NORM_CPU] = { .name = "PERCENT_NORM_CPU", .title = "NCPU%", .description = "Normalized percentage of the CPU time the process used in the last sampling (normalized by cpu count)", .flags = 0, .defaultSortDesc = true, .autoWidth = true, },
@@ -73,6 +74,7 @@ Process* DarwinProcess_new(const Machine* host) {
    this->stime = 0;
    this->taskAccess = true;
    this->translated = false;
+   this->footprint = 0;
    this->io_read_bytes = 0;
    this->io_write_bytes = 0;
    this->io_last_scan_time_ms = 0;
@@ -115,6 +117,7 @@ static void DarwinProcess_rowWriteField(const Row* super, RichString* str, Proce
    switch (field) {
    // add Platform-specific fields here
    case TRANSLATED: xSnprintf(buffer, n, "%c ", dp->translated ? 'T' : 'N'); break;
+   case M_FOOTPRINT: Row_printKBytes(str, dp->footprint, coloring); return;
    case RBYTES: Row_printBytes(str, dp->io_read_bytes, coloring); return;
    case WBYTES: Row_printBytes(str, dp->io_write_bytes, coloring); return;
    case IO_READ_RATE: Row_printRate(str, dp->io_rate_read_bps, coloring); return;
@@ -136,6 +139,8 @@ static int DarwinProcess_compareByKey(const Process* v1, const Process* v2, Proc
    // add Platform-specific fields here
    case TRANSLATED:
       return SPACESHIP_NUMBER(p1->translated, p2->translated);
+   case M_FOOTPRINT:
+      return SPACESHIP_NUMBER_NA(p1->footprint, p2->footprint, ULLONG_MAX);
    case RBYTES:
       if (p1->io_read_bytes == ULLONG_MAX || p2->io_read_bytes == ULLONG_MAX)
          return (p1->io_read_bytes != ULLONG_MAX) - (p2->io_read_bytes != ULLONG_MAX);
