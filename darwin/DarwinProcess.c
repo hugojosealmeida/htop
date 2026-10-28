@@ -526,6 +526,14 @@ void DarwinProcess_scanThreads(DarwinProcess* dp, DarwinProcessTable* dpt) {
       tprocess->super.updated = true;
       dpt->super.totalTasks++;
 
+      DarwinProcess* tdproc = (DarwinProcess*)tprocess;
+
+      /* Memory is accounted per task rather than per thread, so a thread row
+       * shows the footprint of its parent process (N/A when that footprint is
+       * unavailable); leaving it unset would display and sort every thread as
+       * if it used no memory at all. */
+      tdproc->footprint = dp->footprint;
+
       if (hideUserlandThreads) {
          tprocess->super.show = false;
          continue;
@@ -557,7 +565,6 @@ void DarwinProcess_scanThreads(DarwinProcess* dp, DarwinProcessTable* dpt) {
          continue;
       }
 
-      DarwinProcess* tdproc     = (DarwinProcess*)tprocess;
       tdproc->super.percent_cpu = extended_info.pth_cpu_usage / 10.0;
       tdproc->stime             = extended_info.pth_system_time;
       tdproc->utime             = extended_info.pth_user_time;

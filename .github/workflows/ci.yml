@@ -275,6 +275,9 @@ jobs:
         COLUMNS: 200
         LINES: 60
       run: |
+        # Propagate a failing htop through the checker pipeline below, so an
+        # htop crash is not reported as a passing check.
+        set -o pipefail
         # "htop -s M_FOOTPRINT" sorts by a column that is not visible; the scan
         # must still collect its data. Without collection every footprint stays
         # 0 and the PID tie-breaker puts the small process (spawned first, so
